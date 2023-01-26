@@ -28,7 +28,7 @@ func ListenAndServeWithSignal(cfg *Config, handler tcp.Handler) error {
 			closeChan <- struct{}{}
 		}
 	}()
-	listener, err := net.Listen("TCP", cfg.Address)
+	listener, err := net.Listen("tcp", cfg.Address)
 	if err != nil {
 		return err
 	}
