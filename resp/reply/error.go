@@ -5,11 +5,11 @@ type UnKnowErrReply struct {
 
 var unKnowErrBytes = []byte("-Err unknow\r\n")
 
-func (u UnKnowErrReply) Error() string {
+func (u *UnKnowErrReply) Error() string {
 	return "Err unknow"
 }
 
-func (u UnKnowErrReply) ToBytes() []byte {
+func (u *UnKnowErrReply) ToBytes() []byte {
 	return unKnowErrBytes
 }
 

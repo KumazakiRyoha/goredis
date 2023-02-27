@@ -47,10 +47,18 @@ func (e *EmptyMultiBulReply) ToBytes() []byte {
 	return emptyMultiBulBytes
 }
 
+func MakeEmptyMultiBulReply() *EmptyMultiBulReply {
+	return &EmptyMultiBulReply{}
+}
+
 type NoReply struct{}
 
 var noBytes = []byte("")
 
 func (n NoReply) ToBytes() []byte {
 	return noBytes
+}
+
+func MakeNoReply() *NoReply {
+	return &NoReply{}
 }
