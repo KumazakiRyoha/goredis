@@ -98,6 +98,14 @@ func (s *StandardErrReply) Error() string {
 	return s.Status
 }
 
+// MakeErrReply creates StandardErrReply
+func MakeErrReply(status string) *StandardErrReply {
+	return &StandardErrReply{
+		Status: status,
+	}
+}
+
+// IsErrorReply returns true if the given reply is error
 func IsErrReply(reply resp.Reply) bool {
 	return reply.ToBytes()[0] == '-'
 }
