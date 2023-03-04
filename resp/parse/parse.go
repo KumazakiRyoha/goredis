@@ -17,12 +17,18 @@ type Payload struct {
 	Err  error
 }
 
+// 解析器状态
 type readState struct {
-	readingMultiLine  bool
+	// 该解析器是在解析单行还是多行数据
+	readingMultiLine bool
+	// 正在读取的指令应该有多少参数
 	expectedArgsCount int
-	msgType           byte
-	args              [][]byte
-	bulkLen           int64
+	// 用户消息的类型
+	msgType byte
+	// 消息
+	args [][]byte
+	// 字节组的长度
+	bulkLen int64
 }
 
 func (r *readState) finished() bool {

@@ -3,10 +3,10 @@ package reply
 type UnKnowErrReply struct {
 }
 
-var unKnowErrBytes = []byte("-Err unknow\r\n")
+var unKnowErrBytes = []byte("-Err unKnow\r\n")
 
 func (u *UnKnowErrReply) Error() string {
-	return "Err unknow"
+	return "Err unKnow"
 }
 
 func (u *UnKnowErrReply) ToBytes() []byte {
@@ -77,4 +77,10 @@ func (p *ProtocolErrReply) Error() string {
 
 func (p *ProtocolErrReply) ToBytes() []byte {
 	return []byte("-ERR Protocol error: '" + p.Msg + "'\r\n")
+}
+
+func MakeProtocolErrReply(msg string) *ProtocolErrReply {
+	return &ProtocolErrReply{
+		Msg: msg,
+	}
 }
