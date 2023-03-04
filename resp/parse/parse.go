@@ -72,6 +72,7 @@ func parse0(reader io.Reader, ch chan<- *Payload) {
 		}
 
 		// parse line
+		// 判断是不是多行解析模式
 		if !state.readingMultiLine {
 			// receive new response
 			if msg[0] == '*' {
