@@ -14,6 +14,12 @@ type Connection struct {
 	selectedDB   int
 }
 
+func NewConn(conn net.Conn) *Connection {
+	return &Connection{
+		conn: conn,
+	}
+}
+
 func (c *Connection) RemoteAddr() net.Addr {
 	return c.conn.RemoteAddr()
 }
@@ -42,6 +48,6 @@ func (c *Connection) GetDBIndex() int {
 	return c.selectedDB
 }
 
-func (c *Connection) SelectDB(i int) {
-	c.selectedDB = i
+func (c *Connection) SelectDB(dbNum int) {
+	c.selectedDB = dbNum
 }
