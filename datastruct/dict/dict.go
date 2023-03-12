@@ -25,5 +25,5 @@ type Dict interface {
 	//
 	RandomDistinctKeys(limit int) []string
 	//
-	clear()
+	Clear()
 }
