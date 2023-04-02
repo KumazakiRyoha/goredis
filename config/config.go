@@ -2,30 +2,23 @@ package config
 
 import (
 	"bufio"
+	"goredis/lib/logger"
 	"io"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
-
-	"github.com/hdt3213/godis/lib/logger"
 )
 
 // ServerProperties defines global config properties
 type ServerProperties struct {
-	Bind              string `cfg:"bind"`
-	Port              int    `cfg:"port"`
-	AppendOnly        bool   `cfg:"appendonly"`
-	AppendFilename    string `cfg:"appendfilename"`
-	AppendFsync       string `cfg:"appendfsync"`
-	MaxClients        int    `cfg:"maxclients"`
-	RequirePass       string `cfg:"requirepass"`
-	Databases         int    `cfg:"databases"`
-	RDBFilename       string `cfg:"dbfilename"`
-	MasterAuth        string `cfg:"masterauth"`
-	SlaveAnnouncePort int    `cfg:"slave-announce-port"`
-	SlaveAnnounceIP   string `cfg:"slave-announce-ip"`
-	ReplTimeout       int    `cfg:"repl-timeout"`
+	Bind           string `cfg:"bind"`
+	Port           int    `cfg:"port"`
+	AppendOnly     bool   `cfg:"appendOnly"`
+	AppendFilename string `cfg:"appendFilename"`
+	MaxClients     int    `cfg:"maxclients"`
+	RequirePass    string `cfg:"requirepass"`
+	Databases      int    `cfg:"databases"`
 
 	Peers []string `cfg:"peers"`
 	Self  string   `cfg:"self"`
@@ -51,7 +44,7 @@ func parse(src io.Reader) *ServerProperties {
 	scanner := bufio.NewScanner(src)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) > 0 && strings.TrimLeft(line, " ")[0] == '#' {
+		if len(line) > 0 && line[0] == '#' {
 			continue
 		}
 		pivot := strings.IndexAny(line, " ")
@@ -73,7 +66,7 @@ func parse(src io.Reader) *ServerProperties {
 		field := t.Elem().Field(i)
 		fieldVal := v.Elem().Field(i)
 		key, ok := field.Tag.Lookup("cfg")
-		if !ok || strings.TrimLeft(key, " ") == "" {
+		if !ok {
 			key = field.Name
 		}
 		value, ok := rawMap[strings.ToLower(key)]

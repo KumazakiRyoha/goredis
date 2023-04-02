@@ -1,19 +1,23 @@
 package database
 
-import "strings"
+import (
+	"strings"
+)
 
-// 记录指令河command结构体之间的关系
 var cmdTable = make(map[string]*command)
 
 type command struct {
-	exector ExecFunc
-	arity   int
+	executor ExecFunc
+	arity    int // allow number of args, arity < 0 means len(args) >= -arity
 }
 
-func RegisterCommand(name string, exector ExecFunc, arity int) {
+// RegisterCommand registers a new command
+// arity means allowed number of cmdArgs, arity < 0 means len(args) >= -arity.
+// for example: the arity of `get` is 2, `mget` is -2
+func RegisterCommand(name string, executor ExecFunc, arity int) {
 	name = strings.ToLower(name)
 	cmdTable[name] = &command{
-		exector: exector,
-		arity:   arity,
+		executor: executor,
+		arity:    arity,
 	}
 }

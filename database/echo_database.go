@@ -2,6 +2,7 @@ package database
 
 import (
 	"goredis/interface/resp"
+	"goredis/lib/logger"
 	"goredis/resp/reply"
 )
 
@@ -13,15 +14,15 @@ func NewEchoDatabase() *EchoDatabase {
 }
 
 func (e EchoDatabase) Exec(client resp.Connection, args [][]byte) resp.Reply {
-	return reply.MakeMultiBulReply(args)
-}
+	return reply.MakeMultiBulkReply(args)
 
-func (e EchoDatabase) Close() {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (e EchoDatabase) AfterClientClose(c resp.Connection) {
-	//TODO implement me
-	panic("implement me")
+	logger.Info("EchoDatabase AfterClientClose")
+}
+
+func (e EchoDatabase) Close() {
+	logger.Info("EchoDatabase Close")
+
 }

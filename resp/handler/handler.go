@@ -1,14 +1,18 @@
 package handler
 
+/*
+ * A tcp.RespHandler implements redis protocol
+ */
+
 import (
 	"context"
-	"github.com/hdt3213/godis/lib/logger"
-	"goredis/database"
-	databaseface "goredis/interface/database"
+	database2 "goredis/database"
+	"goredis/interface/database"
+	"goredis/lib/logger"
+	"goredis/lib/sync/atomic"
 	"goredis/resp/connection"
-	"goredis/resp/parse"
+	"goredis/resp/parser"
 	"goredis/resp/reply"
-	"goredis/sync/atomic"
 	"io"
 	"net"
 	"strings"
@@ -19,63 +23,69 @@ var (
 	unknownErrReplyBytes = []byte("-ERR unknown\r\n")
 )
 
+// RespHandler implements tcp.Handler and serves as a redis handler
 type RespHandler struct {
-	activeConn sync.Map
-	db         databaseface.Database
-	closing    atomic.Boolean
+	activeConn sync.Map // *client -> placeholder
+	db         database.Database
+	closing    atomic.Boolean // refusing new client and new request
 }
 
+// MakeHandler creates a RespHandler instance
 func MakeHandler() *RespHandler {
-	var db databaseface.Database
-	db = database.NewDataBase()
+	var db database.Database
+	db = database2.NewDatabase()
 	return &RespHandler{
 		db: db,
 	}
 }
 
-func (r *RespHandler) closeClient(client *connection.Connection) {
+func (h *RespHandler) closeClient(client *connection.Connection) {
 	_ = client.Close()
-	r.db.AfterClientClose(client)
-	r.activeConn.Delete(client)
+	h.db.AfterClientClose(client)
+	h.activeConn.Delete(client)
 }
 
-func (r *RespHandler) Handle(ctx context.Context, conn net.Conn) {
-	if r.closing.Get() {
+// Handle receives and executes redis commands
+func (h *RespHandler) Handle(ctx context.Context, conn net.Conn) {
+	if h.closing.Get() {
+		// closing handler refuse new connection
 		_ = conn.Close()
 	}
-	client := connection.NewConn(conn)
-	r.activeConn.Store(client, struct{}{})
-	ch := parse.ParseStream(conn)
-	for payload := range ch {
-		// error
-		if payload.Err != nil {
 
-			if payload.Err == io.EOF || payload.Err == io.ErrUnexpectedEOF ||
+	client := connection.NewConn(conn)
+	h.activeConn.Store(client, 1)
+
+	ch := parser.ParseStream(conn)
+	for payload := range ch {
+		if payload.Err != nil {
+			if payload.Err == io.EOF ||
+				payload.Err == io.ErrUnexpectedEOF ||
 				strings.Contains(payload.Err.Error(), "use of closed network connection") {
-				r.closeClient(client)
-				logger.Info("connection close: " + client.RemoteAddr().String())
+				// connection closed
+				h.closeClient(client)
+				logger.Info("connection closed: " + client.RemoteAddr().String())
 				return
 			}
-			// protocol erroro
+			// protocol err
 			errReply := reply.MakeErrReply(payload.Err.Error())
 			err := client.Write(errReply.ToBytes())
 			if err != nil {
-				r.closeClient(client)
+				h.closeClient(client)
 				logger.Info("connection closed: " + client.RemoteAddr().String())
 				return
 			}
 			continue
 		}
-		// exec
 		if payload.Data == nil {
+			logger.Error("empty payload")
 			continue
 		}
-		bulReply, ok := payload.Data.(*reply.MultiBulReply)
+		r, ok := payload.Data.(*reply.MultiBulkReply)
 		if !ok {
-			logger.Info("require multi buik reply")
+			logger.Error("require multi bulk reply")
 			continue
 		}
-		result := r.db.Exec(client, bulReply.Args)
+		result := h.db.Exec(client, r.Args)
 		if result != nil {
 			_ = client.Write(result.ToBytes())
 		} else {
@@ -84,14 +94,16 @@ func (r *RespHandler) Handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (r *RespHandler) Close() error {
-	logger.Info("handler shutting down")
-	r.closing.Set(true)
-	r.activeConn.Range(func(key interface{}, value interface{}) bool {
+// Close stops handler
+func (h *RespHandler) Close() error {
+	logger.Info("handler shutting down...")
+	h.closing.Set(true)
+	// TODO: concurrent wait
+	h.activeConn.Range(func(key interface{}, val interface{}) bool {
 		client := key.(*connection.Connection)
 		_ = client.Close()
 		return true
 	})
-	r.db.Close()
+	h.db.Close()
 	return nil
 }

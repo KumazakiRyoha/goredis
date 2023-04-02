@@ -55,7 +55,7 @@ func Setup(settings *Settings) {
 		time.Now().Format(settings.TimeFormat),
 		settings.Ext)
 
-	logFile, err = mustOpen(fileName, dir)
+	logFile, err := mustOpen(fileName, dir)
 	if err != nil {
 		log.Fatalf("logging.Setup err: %s", err)
 	}
@@ -105,13 +105,6 @@ func Error(v ...interface{}) {
 	defer mu.Unlock()
 	setPrefix(ERROR)
 	logger.Println(v...)
-}
-
-func Errorf(format string, v ...interface{}) {
-	mu.Lock()
-	defer mu.Unlock()
-	setPrefix(ERROR)
-	logger.Println(fmt.Sprintf(format, v...))
 }
 
 // Fatal prints error log then stop the program

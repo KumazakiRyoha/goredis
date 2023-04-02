@@ -1,52 +1,65 @@
 package tcp
 
+/**
+ * A echo handler to test whether the handler is functioning normally
+ */
+
 import (
 	"bufio"
 	"context"
-	"github.com/hdt3213/godis/lib/logger"
-	"goredis/sync/atomic"
-	"goredis/sync/wait"
+	"goredis/lib/logger"
+	"goredis/lib/sync/atomic"
+	"goredis/lib/sync/wait"
 	"io"
 	"net"
 	"sync"
 	"time"
 )
 
-type EchoClient struct {
-	Conn    net.Conn
-	Waiting wait.Wait
-}
-
+// EchoHandler echos received line to client, using for test
 type EchoHandler struct {
 	activeConn sync.Map
 	closing    atomic.Boolean
 }
 
+// MakeEchoHandler creates EchoHandler
 func MakeHandler() *EchoHandler {
 	return &EchoHandler{}
 }
 
-func (e *EchoClient) Close() error {
-	e.Waiting.WaitWithTimeout(10 * time.Second)
-	_ = e.Conn.Close()
+// EchoClient is client for EchoHandler, using for test
+type EchoClient struct {
+	Conn    net.Conn
+	Waiting wait.Wait
+}
+
+// Close close connection
+func (c *EchoClient) Close() error {
+	c.Waiting.WaitWithTimeout(10 * time.Second)
+	c.Conn.Close()
 	return nil
 }
 
-func (e *EchoHandler) Handle(ctx context.Context, conn net.Conn) {
-	if e.closing.Get() {
+// Handle echos received line to client
+func (h *EchoHandler) Handle(ctx context.Context, conn net.Conn) {
+	if h.closing.Get() {
+		// closing handler refuse new connection
 		_ = conn.Close()
 	}
+
 	client := &EchoClient{
 		Conn: conn,
 	}
-	e.activeConn.Store(client, struct{}{})
+	h.activeConn.Store(client, struct{}{})
+
 	reader := bufio.NewReader(conn)
 	for {
+		// may occurs: client EOF, client timeout, handler early close
 		msg, err := reader.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
-				logger.Info("Connection close")
-				e.activeConn.Delete(client)
+				logger.Info("connection close")
+				h.activeConn.Delete(client)
 			} else {
 				logger.Warn(err)
 			}
@@ -59,12 +72,13 @@ func (e *EchoHandler) Handle(ctx context.Context, conn net.Conn) {
 	}
 }
 
-func (e *EchoHandler) Close() error {
-	logger.Info("handler shutting down")
-	e.closing.Set(true)
-	e.activeConn.Range(func(key, value any) bool {
+// Close stops echo handler
+func (h *EchoHandler) Close() error {
+	logger.Info("handler shutting down...")
+	h.closing.Set(true)
+	h.activeConn.Range(func(key interface{}, val interface{}) bool {
 		client := key.(*EchoClient)
-		_ = client.Conn.Close()
+		_ = client.Close()
 		return true
 	})
 	return nil

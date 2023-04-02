@@ -1,22 +1,23 @@
 package database
 
 import (
-	"github.com/hdt3213/godis/lib/wildcard"
 	"goredis/interface/resp"
+	"goredis/lib/wildcard"
 	"goredis/resp/reply"
 )
 
-// del
+// execDel removes a key from db
 func execDel(db *DB, args [][]byte) resp.Reply {
 	keys := make([]string, len(args))
 	for i, v := range args {
 		keys[i] = string(v)
 	}
+
 	deleted := db.Removes(keys...)
 	return reply.MakeIntReply(int64(deleted))
 }
 
-// exists
+// execExists checks if a is existed in db
 func execExists(db *DB, args [][]byte) resp.Reply {
 	result := int64(0)
 	for _, arg := range args {
@@ -29,16 +30,14 @@ func execExists(db *DB, args [][]byte) resp.Reply {
 	return reply.MakeIntReply(result)
 }
 
-//keys
-
-// flushdn
-func execFlushDb(db *DB, args [][]byte) resp.Reply {
+// execFlushDB removes all data in current db
+func execFlushDB(db *DB, args [][]byte) resp.Reply {
 	db.Flush()
-	return reply.MakeOkReply()
+	return &reply.OkReply{}
 }
 
-// type k1
-func execYtpe(db *DB, args [][]byte) resp.Reply {
+// execType returns the type of entity, including: string, list, hash, set and zset
+func execType(db *DB, args [][]byte) resp.Reply {
 	key := string(args[0])
 	entity, exists := db.GetEntity(key)
 	if !exists {
@@ -48,59 +47,64 @@ func execYtpe(db *DB, args [][]byte) resp.Reply {
 	case []byte:
 		return reply.MakeStatusReply("string")
 	}
-	// TODO:
-	return &reply.UnKnowErrReply{}
+	return &reply.UnknownErrReply{}
 }
 
-// RENAME k1 k2
+// execRename a key
 func execRename(db *DB, args [][]byte) resp.Reply {
+	if len(args) != 2 {
+		return reply.MakeErrReply("ERR wrong number of arguments for 'rename' command")
+	}
 	src := string(args[0])
 	dest := string(args[1])
-	entity, exists := db.GetEntity(src)
-	if !exists {
+
+	entity, ok := db.GetEntity(src)
+	if !ok {
 		return reply.MakeErrReply("no such key")
 	}
 	db.PutEntity(dest, entity)
 	db.Remove(src)
-	return reply.MakeNoReply()
+	return &reply.OkReply{}
 }
 
-// RENAMENX
+// execRenameNx a key, only if the new key does not exist
 func execRenameNx(db *DB, args [][]byte) resp.Reply {
 	src := string(args[0])
 	dest := string(args[1])
+
 	_, ok := db.GetEntity(dest)
 	if ok {
 		return reply.MakeIntReply(0)
 	}
-	entity, exists := db.GetEntity(src)
-	if !exists {
+
+	entity, ok := db.GetEntity(src)
+	if !ok {
 		return reply.MakeErrReply("no such key")
 	}
+	db.Removes(src, dest) // clean src and dest with their ttl
 	db.PutEntity(dest, entity)
-	db.Remove(src)
 	return reply.MakeIntReply(1)
 }
 
-// KEYS *
+// execKeys returns all keys matching the given pattern
 func execKeys(db *DB, args [][]byte) resp.Reply {
 	pattern := wildcard.CompilePattern(string(args[0]))
 	result := make([][]byte, 0)
-	db.data.ForEach(func(key string, val any) bool {
+	db.data.ForEach(func(key string, val interface{}) bool {
 		if pattern.IsMatch(key) {
 			result = append(result, []byte(key))
 		}
 		return true
 	})
-	return reply.MakeMultiBulReply(result)
+	return reply.MakeMultiBulkReply(result)
 }
 
 func init() {
-	RegisterCommand("DEL", execDel, -2)
-	RegisterCommand("EXISTS", execExists, -2)
-	RegisterCommand("flushdb", execFlushDb, -1)  //FLUSHDB a b c
-	RegisterCommand("Type", execYtpe, 2)         //TYPE k1
-	RegisterCommand("RENAME", execRename, 3)     //RENAME k1 k2
-	RegisterCommand("RENAMENX", execRenameNx, 3) //RENAME k1 k2
-	RegisterCommand("KEYS", execKeys, 2)         //RENAME k1 k2
+	RegisterCommand("Del", execDel, -2)
+	RegisterCommand("Exists", execExists, -2)
+	RegisterCommand("Keys", execKeys, 2)
+	RegisterCommand("FlushDB", execFlushDB, -1)
+	RegisterCommand("Type", execType, 2)
+	RegisterCommand("Rename", execRename, 3)
+	RegisterCommand("RenameNx", execRenameNx, 3)
 }
