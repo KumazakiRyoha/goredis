@@ -13,7 +13,8 @@ import (
 type DB struct {
 	index int
 	// key -> DataEntity
-	data dict.Dict
+	data   dict.Dict
+	addAof func(CmdLine)
 }
 
 // ExecFunc is interface for command executor
@@ -26,7 +27,8 @@ type CmdLine = [][]byte
 // makeDB create DB instance
 func makeDB() *DB {
 	db := &DB{
-		data: dict.MakeSyncDict(),
+		data:   dict.MakeSyncDict(),
+		addAof: func(line CmdLine) {},
 	}
 	return db
 }

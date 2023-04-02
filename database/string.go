@@ -39,6 +39,7 @@ func execSet(db *DB, args [][]byte) resp.Reply {
 		Data: value,
 	}
 	db.PutEntity(key, entity)
+	db.addAof(args)
 	return &reply.OkReply{}
 }
 
